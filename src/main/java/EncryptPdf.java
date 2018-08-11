@@ -1,84 +1,70 @@
-package script;
-
 import com.itextpdf.kernel.crypto.BadPasswordException;
 import com.itextpdf.kernel.pdf.*;
 
 import java.io.File;
 
 public class EncryptPdf {
-    private String sourceDirPath, targetDirPath, userPassword, ownerPassword;
+    private String sourcePath, targetDirPath, userPassword, ownerPassword;
 
-    private EncryptPdf(String sourceDirPath, String targetDirPath, String userPassword, String ownerPassword) {
-        this.sourceDirPath = sourceDirPath;
+    private EncryptPdf(String sourcePath, String targetDirPath, String userPassword, String ownerPassword) {
+        this.sourcePath = sourcePath;
         this.targetDirPath = targetDirPath;
         this.userPassword = userPassword;
         this.ownerPassword = ownerPassword;
     }
 
-    private void tranverseDirectory() {
-        File sourceFile = new File(sourceDirPath);
-        if(sourceFile.isDirectory()) {
-            tranverseDirectory(sourceDirPath, targetDirPath);
-        } else if(isPdfExtension(sourceFile)) {
-            generateEncryptedPdf(sourceFile, targetDirPath);
-        } else {
-            System.out.println("Not a directory nor a pdf file!");
+    private void encrypt() {
+        File sourceFile = new File(sourcePath);
+        if(!sourceFile.isDirectory() && isPdfExtension(sourceFile)) {
+            System.out.println("SourcePath is not a directory nor a pdf file!");
+            return;
         }
-    }
-
-    private void tranverseDirectory(String sourcePath, String targetDirPath) {
-        File targetFile = new File(targetDirPath);
-        if(!targetFile.exists() && !targetFile.mkdir()) {
+        File targetDirectory = new File(targetDirPath);
+        if(!(targetDirectory.exists() && targetDirectory.isDirectory()) && !targetDirectory.mkdir()) {
             System.out.println("Directory does not exist and cannot be created: " + targetDirPath);
             return;
         }
-        File sourceFile = new File(sourcePath);
-        if(sourceFile.exists()) {
+        encrypt(sourceFile, targetDirPath);
+    }
+
+    private void encrypt(File sourceFile, String targetDirPath) {
+        if(sourceFile.isDirectory()) {
             File[] files = sourceFile.listFiles();
             if(files != null) {
                 for (File f: files) {
-                    String newTargetPath = targetDirPath + "/" + f.getName();
-                    if(f.isDirectory()){
-                        tranverseDirectory(f.getAbsolutePath(), newTargetPath);
-                    } else if(isPdfExtension(f)) {
-                        try {
-                            generateEncryptedPdf(f, generateEncryptedFileName(newTargetPath));
-                        }catch (Exception e) {
-                            System.out.println("[ERROR]: " + f.getAbsolutePath());
-                            e.printStackTrace();
-                        }
-                    }
+                    encrypt(f, targetDirPath);
                 }
+            } else {
+                System.out.println("[ERROR]: cannot get file list of directory " + sourceFile.getAbsoluteFile());
             }
-        } else {
-            System.out.println("Source directory does not exist!");
+        } else if(isPdfExtension(sourceFile)){
+            String targetFilePath = targetDirPath + File.separator + generateEncryptedFileName(sourceFile.getName());
+            generateEncryptedPdf(sourceFile, targetFilePath);
         }
     }
 
-    private void generateEncryptedPdf(File file, String targetFilePath) {
-
+    private void generateEncryptedPdf(File sourceFile, String targetFilePath) {
         WriterProperties prop = new WriterProperties();
         prop.setStandardEncryption(
-                userPassword.getBytes(), ownerPassword.getBytes(), 0, EncryptionConstants.ENCRYPTION_AES_256);
+                userPassword.getBytes(), ownerPassword.getBytes(),
+                0, EncryptionConstants.ENCRYPTION_AES_256);
         try {
             PdfReader reader = null;
             PdfWriter writer = null;
             PdfDocument pdfDoc = null;
             boolean needDelete = false;
             try{
-                reader = new PdfReader(file.getAbsoluteFile());
+                reader = new PdfReader(sourceFile);
                 writer = new PdfWriter(targetFilePath, prop);
                 pdfDoc = new PdfDocument(reader.setUnethicalReading(true), writer);
             } catch (BadPasswordException e) {
-                System.out.println("Encrypted pdf: " + file.getAbsolutePath());
+                System.out.println("Encrypted pdf: " + sourceFile.getAbsolutePath());
                 needDelete = writer != null;
             } catch (Exception e) {
+                System.out.println("[ERROR]: " + sourceFile.getAbsolutePath());
                 e.printStackTrace();
                 needDelete = writer != null;
             } finally {
-                if(reader != null && reader.isCloseStream()) {
-                    reader.close();
-                }
                 if(needDelete) {
                     writer.close();
                     new File(targetFilePath).delete();
@@ -88,6 +74,7 @@ public class EncryptPdf {
                 }
             }
         } catch (Exception e) {
+            System.out.println("[ERROR]: " + sourceFile.getAbsolutePath());
             e.printStackTrace();
         }
     }
@@ -109,10 +96,10 @@ public class EncryptPdf {
         System.out.println(((-4) << 1));
         if(args.length != 4) {
             System.out.println(
-                    "Exact 4 arguments need to be given: " + "sourceDirPath, targetDirPath, userPassword, ownerPassword");
+                    "Exact 4 arguments need to be given: " + "sourcePath, targetDirPath, userPassword, ownerPassword");
             return;
         }
         EncryptPdf generatePdf = new EncryptPdf(args[0], args[1], args[2], args[3]);
-        generatePdf.tranverseDirectory();
+        generatePdf.encrypt();
     }
 }

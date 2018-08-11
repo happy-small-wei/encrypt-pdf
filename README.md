@@ -6,4 +6,4 @@ java -jar $jarPath/encrypt-pdf-1.0-SNAPSHOT sourceDirPath targetDirPath userPass
 
 for single file:
 
-java -jar $jarPath/encrypt-pdf-1.0-SNAPSHOT sourceFilePath targetFilePath userPassword ownerPassword
+java -jar $jarPath/encrypt-pdf-1.0-SNAPSHOT sourceFilePath targetDirPath userPassword ownerPassword
