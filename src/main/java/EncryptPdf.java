@@ -65,8 +65,10 @@ public class EncryptPdf {
                 e.printStackTrace();
                 needDelete = writer != null;
             } finally {
-                if(needDelete) {
+                if(writer != null) {
                     writer.close();
+                }
+                if(needDelete) {
                     new File(targetFilePath).delete();
                 }
                 if(pdfDoc != null && !pdfDoc.isClosed()) {
